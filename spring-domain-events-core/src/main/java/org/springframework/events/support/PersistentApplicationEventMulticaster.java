@@ -172,7 +172,16 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 
 		for (ApplicationListener listener : getApplicationListeners()) {
 
-			if (publication.isIdentifiedBy(PublicationTargetIdentifier.forListener(listener))) {
+		    /*
+		     *  Ensure listener is transactional event listener. Otherwise
+		     *  PublicationTargetIdentifier.forListener(listener) may throw an exception
+		     *  for listeners that are no instance of ApplicationListenerMethodAdapter.
+		     *  
+		     *  This additional check is perfectly fine as we only save EventPublications
+		     *  for transactional listeners anyway (see: multicastEvent(...)).
+		     */
+			if (isTransactionalApplicationEventListener(listener)
+			        && publication.isIdentifiedBy(PublicationTargetIdentifier.forListener(listener))) {
 
 				executeListenerWithCompletion(publication, listener);
 				return;
