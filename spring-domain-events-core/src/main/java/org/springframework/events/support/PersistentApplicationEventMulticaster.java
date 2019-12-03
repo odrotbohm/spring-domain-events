@@ -109,10 +109,49 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 
 		for (ApplicationListener listener : listeners) {
 
-			EventPublication publication = CompletableEventPublication.of(event,
-					PublicationTargetIdentifier.forListener(listener));
+		    if (transactionalListeners.contains(listener)) {
+		        
+		        // Handle event publication as before
+		        EventPublication publication = CompletableEventPublication.of(event,
+	                    PublicationTargetIdentifier.forListener(listener));
 
-			executeListenerWithCompletion(publication, listener);
+	            executeListenerWithCompletion(publication, listener);
+		    } else {
+		        
+		        // Simply forward event to listener
+		        listener.onApplicationEvent(event);
+		        
+		        /*
+		         * For non-transactional listeners reliable event publication is not necessary.
+		         * Relevant use-case for persistent events are domain events, and those will always (?)
+		         * be handled by a transactional event listener marked with @TransactionalEventListener
+		         * 
+		         * Apart from that 'PublicationTargetIdentifier.forListener(listener)' will throw an Exception
+		         * for all listeners that are not an instance of 'ApplicationListenerMethodAdapter'.
+		         * When using spring-domain-events in a 'full' spring-boot application using spring-web, spring-data etc.
+		         * the following listeners are 'unsupported' (throw an exception):
+		         * 
+		         *     org.springframework.boot.devtools.restart.RestartApplicationListener
+                 *     org.springframework.boot.context.config.DelegatingApplicationListener
+                 *     org.springframework.data.mongodb.core.index.MongoPersistentEntityIndexCreator
+                 *     org.springframework.security.context.DelegatingApplicationListener
+                 *     org.springframework.boot.devtools.autoconfigure.LocalDevToolsAutoConfiguration$LiveReloadServerEventListener
+                 *     org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener$ConditionEvaluationReportListener
+                 *     org.springframework.boot.ClearCachesApplicationListener@e9a95de
+                 *     org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer$SharedMetadataReaderFactoryBean
+                 *     org.springframework.plugin.core.support.PluginRegistryFactoryBean
+                 *     org.springframework.web.servlet.resource.ResourceUrlProvider
+                 *     org.springframework.plugin.core.support.PluginRegistryFactoryBean
+                 *     org.springframework.plugin.core.support.PluginRegistryFactoryBean
+                 *     org.springframework.boot.web.context.ServerPortInfoApplicationContextInitializer
+                 *     org.springframework.boot.autoconfigure.BackgroundPreinitializer
+                 *     org.springframework.boot.devtools.autoconfigure.ConditionEvaluationDeltaLoggingListener
+		         */
+		        
+		        
+		    }
+		    
+			
 		}
 	}
 
