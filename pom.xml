@@ -26,6 +26,7 @@
 		<module>spring-domain-events-jackson</module>
 		<module>spring-domain-events-tests</module>
 		<module>spring-domain-events-starter</module>
+		<module>spring-domain-events-mongodb</module>
 	</modules>
 
 	<build>
