@@ -17,6 +17,7 @@ package org.springframework.events.support;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Field;
@@ -65,11 +66,16 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 
 	private static final Map<Class<?>, Boolean> TX_EVENT_LISTENERS = new ConcurrentReferenceHashMap<>();
 	private static final Field LISTENER_METHOD_FIELD;
+	private static final Map<ListenerAndEventTypeKey, Boolean> DECLARED_EVENT_TYPES = new ConcurrentReferenceHashMap<>();
+	private static final Field DECLARED_EVENT_TYPES_FIELD;
 
 	static {
 
 		LISTENER_METHOD_FIELD = ReflectionUtils.findField(ApplicationListenerMethodAdapter.class, "method");
 		ReflectionUtils.makeAccessible(LISTENER_METHOD_FIELD);
+		
+		DECLARED_EVENT_TYPES_FIELD = ReflectionUtils.findField(ApplicationListenerMethodAdapter.class, "declaredEventTypes");
+		ReflectionUtils.makeAccessible(DECLARED_EVENT_TYPES_FIELD);
 	}
 
 	/*
@@ -96,8 +102,20 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 			return;
 		}
 
+		/*
+		 * getApplicationListeners(event, type) also returns some transactional event listeners
+		 * for events they don't want to handle (e.g. spring-data-mongodb's mapping events).
+		 * Normally the ApplicationListenerMethodAdapter ignores the unsupported events, but if
+		 * spring-data-mongodb is used to persist domain events this causes a lot of events to be persisted
+		 * unnecessarily.
+		 * Also the storing of mapping events causes recursive publishing more events as the stored EventPublications
+		 * themself also publish mapping events! This results in OutOfMemoryErrors!
+		 * 
+		 * Solution is to check transactionalListeners here a second time of they support the event.
+		 */
 		List<ApplicationListener<?>> transactionalListeners = listeners.stream() //
 				.filter(PersistentApplicationEventMulticaster::isTransactionalApplicationEventListener) //
+				.filter(l -> hasDeclaredEventType(l, type)) //
 				.collect(Collectors.toList());
 
 		if (!transactionalListeners.isEmpty()) {
@@ -219,11 +237,54 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 			return AnnotatedElementUtils.hasAnnotation(method, TransactionalEventListener.class);
 		});
 	}
+	
+	private static boolean hasDeclaredEventType(ApplicationListener<?> listener, ResolvableType eventType) {
+	    
+	    Class<?> targetClass = AopUtils.getTargetClass(listener);
+	    
+	    ListenerAndEventTypeKey key = ListenerAndEventTypeKey.of(targetClass, eventType);
+	    
+	    return DECLARED_EVENT_TYPES.computeIfAbsent(key, it -> {
+	        
+	        if (!ApplicationListenerMethodAdapter.class.isAssignableFrom(targetClass)) {
+                return false;
+            }
+	        
+	        @SuppressWarnings("unchecked")
+            List<ResolvableType> declaredEventTypes = (List<ResolvableType>)
+	                ReflectionUtils.getField(DECLARED_EVENT_TYPES_FIELD, listener);
+	        
+	        return containsEventType(declaredEventTypes, eventType);
+	    });
+	}
+	
+	private static boolean containsEventType(List<ResolvableType> eventTypes, ResolvableType type) {
+	    if (ResolvableType.forClass(PayloadApplicationEvent.class).isAssignableFrom(type)) {
+
+	        // Custom 'contains' implementation to check against payload event type
+            for (ResolvableType declaredType : eventTypes) {
+                
+                ResolvableType payloadEventType = type.getGeneric(0);
+                if (declaredType.isAssignableFrom(payloadEventType)) {
+                    return true;
+                }
+            }
+        }
+        
+        return eventTypes.contains(type);
+	}
 
 	private static Object getEventToPersist(ApplicationEvent event) {
 
 		return PayloadApplicationEvent.class.isInstance(event) //
 				? ((PayloadApplicationEvent<?>) event).getPayload() //
 				: event;
+	}
+	
+	@Value(staticConstructor = "of")
+	private static class ListenerAndEventTypeKey {
+	    
+	    private Class<?> listenerClass;
+	    private ResolvableType eventType;
 	}
 }
