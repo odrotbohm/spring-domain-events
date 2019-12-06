@@ -179,8 +179,15 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 	@Override
 	public void afterSingletonsInstantiated() {
 
+	    boolean noIncompletePublications = true;
 		for (EventPublication publication : registry.get().findIncompletePublications()) {
+		    noIncompletePublications = false;
+		    log.info("Incomplete event publication (event: {}) Invoking listener {}", publication.getEvent(), publication.getTargetIdentifier());
 			invokeTargetListener(publication);
+		}
+		
+		if (noIncompletePublications) {
+		    log.info("No incomplete event publications to re-execute");
 		}
 	}
 
