@@ -26,7 +26,9 @@ import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.Database;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration(proxyBeanMethods = false)
 @EnableTransactionManagement
@@ -55,5 +57,10 @@ class InfrastructureConfiguration {
 	@Bean
 	JpaTransactionManager transactionManager(EntityManagerFactory factory) {
 		return new JpaTransactionManager(factory);
+	}
+	
+	@Bean
+	TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
+	    return new TransactionTemplate(transactionManager);
 	}
 }
