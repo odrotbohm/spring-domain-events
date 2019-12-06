@@ -56,14 +56,7 @@ public class PublicationTargetIdentifier {
 	 */
 	public static PublicationTargetIdentifier forMethod(Method method) {
 
-		return IDENTIFIERS.computeIfAbsent(method, it -> {
-
-			String typeName = ClassUtils.getUserClass(method.getDeclaringClass()).getName();
-			String methodName = method.getName();
-			String parameterTypes = StringUtils.arrayToDelimitedString(method.getParameterTypes(), ", ");
-
-			return PublicationTargetIdentifier.of(String.format("%s.%s(%s)", typeName, methodName, parameterTypes));
-		});
+		return IDENTIFIERS.computeIfAbsent(method, it -> computeForMethod(method));
 	}
 
 	/**
@@ -79,11 +72,34 @@ public class PublicationTargetIdentifier {
 			if (it instanceof ApplicationListenerMethodAdapter) {
 
 				Method method = (Method) ReflectionUtils.getField(LISTENER_METHOD_FIELD, it);
-				return PublicationTargetIdentifier.forMethod(method);
+				/*
+				 * Do not call forMethod(method) here. This may cause non-deterministic
+				 * 'IllegalStateException: Recursive update' thrown from ConcurrentHashMap.computeIfAbsent.
+				 * ConcurrentHashMap documentations defines that the computation 'must not attempt to update
+				 * any other mappings of this map.'
+				 * 
+				 * We could maintain two Maps, one for listener IDs and one for method IDs but recomputing
+				 * the id at most two times is the easier solution.
+				 */
+				return computeForMethod(method);
 			}
 
 			throw new IllegalStateException("Unsupported listener implementation!");
 		});
+	}
+	
+	/**
+	 * Returns a {@link PublicationTargetIdentifier} for the given {@link Method}.
+	 * 
+	 * @param method
+	 * @return
+	 */
+	private static PublicationTargetIdentifier computeForMethod(Method method) {
+	    String typeName = ClassUtils.getUserClass(method.getDeclaringClass()).getName();
+        String methodName = method.getName();
+        String parameterTypes = StringUtils.arrayToDelimitedString(method.getParameterTypes(), ", ");
+
+        return PublicationTargetIdentifier.of(String.format("%s.%s(%s)", typeName, methodName, parameterTypes));
 	}
 
 	/*
