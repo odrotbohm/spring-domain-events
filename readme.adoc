@@ -16,7 +16,7 @@ This allows us to re-publish the events to transactional listeners that either h
 
 == Building blocks of the prototype
 
-* The `EventPublicationRegistry` -- the core interface to register publications and mark them completed. It allows different implementations (JPA, JDBC).
+* The `EventPublicationRegistry` -- the core interface to register publications and mark them completed. It allows different implementations (JPA, JDBC, MongoDB).
 * The `EventSerializer` -- a component to serialize the actual domain event so that it can be kept around in the publication. Again, to allow pluggable implementations (Jackson etc.)
 * `PersistentApplicationEventMulticaster` -- a replacement for Spring's default `ApplicationEventMulticaster` that stores publications via the `EventPublicationRegistry`.
 * `CompletionRegisteringBeanPostProcessor` -- a `BeanPostProcessor` that wraps `@TransactionalEventListener` instances with an interceptor to mark publications as completed.
@@ -27,4 +27,5 @@ This allows us to re-publish the events to transactional listeners that either h
 * `core` -- multicaster implementation, general and configuration infrastructure and SPI interfaces.
 * `jackson` -- a rudimentary Jackson-based `EventSerializer` implementation.
 * `jpa` -- a JPA-based `EventPublicationRegistry`.
+* `mongodb` -- a MongoDB based `EventPublicationRegistry`
 * `test` -- a sample integration test featuring two successful and one failing listener to show the registry exposes  the publication of the failed listener after the failure.
