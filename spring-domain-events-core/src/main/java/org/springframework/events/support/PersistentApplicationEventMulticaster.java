@@ -133,7 +133,7 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 		        EventPublication publication = CompletableEventPublication.of(event,
 	                    PublicationTargetIdentifier.forListener(listener));
 
-	            executeListenerWithCompletion(publication, listener);
+	            executeTransactionalListener(publication, listener);
 		    } else {
 		        
 		        // Simply forward event to listener
@@ -201,7 +201,7 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 			if (isTransactionalApplicationEventListener(listener)
 			        && publication.isIdentifiedBy(PublicationTargetIdentifier.forListener(listener))) {
 
-				executeListenerWithCompletion(publication, listener);
+				executeTransactionalListener(publication, listener);
 				return;
 			}
 		}
@@ -209,16 +209,24 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 		log.debug("Listener {} not found!", publication.getTargetIdentifier());
 	}
 
-	private void executeListenerWithCompletion(EventPublication publication,
+	private void executeTransactionalListener(EventPublication publication,
 			ApplicationListener<ApplicationEvent> listener) {
 
 		try {
 
 			listener.onApplicationEvent(publication.getApplicationEvent());
-			registry.get().markCompleted(publication);
+			/*
+			 * Do NOT mark as completed here. All transactional event listeners are represented as
+			 * an ApplicationListenerMethodTransactionalAdapter which only registers a TransactionSynchronization
+			 * for the event to execute the listener later, but not executes immediately.
+			 * 
+			 * The event publication will be marked complete by the CompletionRegisteringMethodInterceptor
+			 * registered through the CompletionRegisteringBeanPostProcessor.
+			 */
 
 		} catch (Exception e) {
 			// Log
+		    // TODO Do we really need to log here since no listener is actually executed.
 		}
 	}
 
