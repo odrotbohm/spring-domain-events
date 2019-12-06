@@ -23,22 +23,24 @@ import org.springframework.events.EventPublicationRegistry;
 import org.springframework.events.support.CompletionRegisteringBeanPostProcessor;
 import org.springframework.events.support.MapEventPublicationRegistry;
 import org.springframework.events.support.PersistentApplicationEventMulticaster;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * @author Oliver Drotbohm
  */
 @Configuration(proxyBeanMethods = false)
 class EventPublicationConfiguration {
-
-	@Bean
-	PersistentApplicationEventMulticaster applicationEventMulticaster(ObjectProvider<EventPublicationRegistry> registry) {
-
-		return new PersistentApplicationEventMulticaster(
-				() -> registry.getIfAvailable(() -> new MapEventPublicationRegistry()));
-	}
-
-	@Bean
-	static CompletionRegisteringBeanPostProcessor bpp(ObjectFactory<EventPublicationRegistry> store) {
-		return new CompletionRegisteringBeanPostProcessor(() -> store.getObject());
-	}
+    
+    @Bean
+    PersistentApplicationEventMulticaster applicationEventMulticaster(ObjectProvider<EventPublicationRegistry> registry,
+            TransactionTemplate transactionTemplate) {
+        
+        return new PersistentApplicationEventMulticaster(
+                () -> registry.getIfAvailable(() -> new MapEventPublicationRegistry()), transactionTemplate);
+    }
+    
+    @Bean
+    static CompletionRegisteringBeanPostProcessor bpp(ObjectFactory<EventPublicationRegistry> store) {
+        return new CompletionRegisteringBeanPostProcessor(() -> store.getObject());
+    }
 }

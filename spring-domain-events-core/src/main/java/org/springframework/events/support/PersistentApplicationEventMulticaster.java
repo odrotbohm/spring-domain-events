@@ -15,11 +15,6 @@
  */
 package org.springframework.events.support;
 
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.Value;
-import lombok.extern.slf4j.Slf4j;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -43,8 +38,15 @@ import org.springframework.events.EventPublication;
 import org.springframework.events.EventPublicationRegistry;
 import org.springframework.events.PublicationTargetIdentifier;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.ConcurrentReferenceHashMap;
 import org.springframework.util.ReflectionUtils;
+
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * An {@link ApplicationEventMulticaster} to register {@link EventPublication}s in an {@link EventPublicationRegistry}
@@ -63,6 +65,7 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 		implements SmartInitializingSingleton {
 
 	private final @NonNull Supplier<EventPublicationRegistry> registry;
+	private final @NonNull TransactionTemplate transactionTemplate;
 
 	private static final Map<Class<?>, Boolean> TX_EVENT_LISTENERS = new ConcurrentReferenceHashMap<>();
 	private static final Field LISTENER_METHOD_FIELD;
@@ -165,11 +168,7 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
                  *     org.springframework.boot.autoconfigure.BackgroundPreinitializer
                  *     org.springframework.boot.devtools.autoconfigure.ConditionEvaluationDeltaLoggingListener
 		         */
-		        
-		        
 		    }
-		    
-			
 		}
 	}
 
@@ -211,23 +210,32 @@ public class PersistentApplicationEventMulticaster extends AbstractApplicationEv
 
 	private void executeTransactionalListener(EventPublication publication,
 			ApplicationListener<ApplicationEvent> listener) {
-
-		try {
-
-			listener.onApplicationEvent(publication.getApplicationEvent());
-			/*
-			 * Do NOT mark as completed here. All transactional event listeners are represented as
-			 * an ApplicationListenerMethodTransactionalAdapter which only registers a TransactionSynchronization
-			 * for the event to execute the listener later, but not executes immediately.
-			 * 
-			 * The event publication will be marked complete by the CompletionRegisteringMethodInterceptor
-			 * registered through the CompletionRegisteringBeanPostProcessor.
-			 */
-
-		} catch (Exception e) {
-			// Log
-		    // TODO Do we really need to log here since no listener is actually executed.
-		}
+	    
+	    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            
+            // We have an active transaction
+            listener.onApplicationEvent(publication.getApplicationEvent());
+	    } else {
+	        
+	        /*
+             *  ApplicationListenerMethodTransactionalAdapter requires existing transaction.
+             *  Moreover the concept of reliable domain events would be useless if the event handler
+             *  would not run inside a transaction.
+             */
+            transactionTemplate.executeWithoutResult((status) -> {
+                
+                listener.onApplicationEvent(publication.getApplicationEvent());
+            });
+	    }
+	    
+	    /*
+         * Do NOT mark as completed here! All transactional event listeners are represented as
+         * an ApplicationListenerMethodTransactionalAdapter which only registers a TransactionSynchronization
+         * for the event to execute the listener later, but not executes immediately.
+         * 
+         * The event publication will be marked complete by the CompletionRegisteringMethodInterceptor
+         * registered through the CompletionRegisteringBeanPostProcessor.
+         */
 	}
 
 	private static boolean isTransactionalApplicationEventListener(ApplicationListener<?> listener) {
