@@ -17,12 +17,11 @@ package org.springframework.events.support;
 
 import lombok.Value;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import org.springframework.context.ApplicationListener;
 import org.springframework.events.CompletableEventPublication;
 import org.springframework.events.EventPublication;
 import org.springframework.events.EventPublicationRegistry;
@@ -55,11 +54,9 @@ public class MapEventPublicationRegistry implements EventPublicationRegistry {
 	 * @see org.springframework.events.EventPublicationRegistry#store(java.lang.Object, java.util.Collection)
 	 */
 	@Override
-	public void store(Object event, Collection<ApplicationListener<?>> listeners) {
+	public void store(Object event, Stream<PublicationTargetIdentifier> identifiers) {
 
-		listeners.forEach(listener -> {
-
-			PublicationTargetIdentifier id = PublicationTargetIdentifier.forListener(listener);
+		identifiers.forEach(id -> {
 			events.computeIfAbsent(Key.of(event, id), it -> CompletableEventPublication.of(event, id));
 		});
 	}

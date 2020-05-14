@@ -21,12 +21,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.beans.factory.DisposableBean;
-import org.springframework.context.ApplicationListener;
 import org.springframework.events.CompletableEventPublication;
 import org.springframework.events.EventPublication;
 import org.springframework.events.EventPublicationRegistry;
@@ -53,11 +52,9 @@ class JpaEventPublicationRegistry implements EventPublicationRegistry, Disposabl
 	 * @see org.springframework.events.EventPublicationRegistry#store(java.lang.Object, java.util.Collection)
 	 */
 	@Override
-	public void store(Object event, Collection<ApplicationListener<?>> listeners) {
+	public void store(Object event, Stream<PublicationTargetIdentifier> listeners) {
 
-		listeners.stream() //
-				.map(it -> PublicationTargetIdentifier.forListener(it)) //
-				.map(it -> CompletableEventPublication.of(event, it)) //
+		listeners.map(it -> CompletableEventPublication.of(event, it)) //
 				.map(this::map) //
 				.forEach(it -> events.save(it));
 	}

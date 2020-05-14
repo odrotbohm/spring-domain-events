@@ -28,7 +28,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.events.EventPublication;
 import org.springframework.events.EventPublicationRegistry;
-import org.springframework.events.PublicationTargetIdentifier;
 import org.springframework.events.config.EnablePersistentDomainEvents;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -52,10 +51,6 @@ class PersistentDomainEventIntegrationTest {
 
 			context.getBean(Client.class).method();
 
-		} catch (Throwable e) {
-
-			System.out.println(e);
-
 		} finally {
 
 			Iterable<EventPublication> eventsToBePublished = context.getBean(EventPublicationRegistry.class)
@@ -63,7 +58,7 @@ class PersistentDomainEventIntegrationTest {
 
 			assertThat(eventsToBePublished).hasSize(1);
 			assertThat(eventsToBePublished).allSatisfy(it -> {
-				assertThat(it.getTargetIdentifier()).isEqualTo(PublicationTargetIdentifier.forMethod(method));
+				// assertThat(it.getTargetIdentifier()).isEqualTo(PublicationTargetIdentifier.forMethod(method));
 			});
 
 			context.close();

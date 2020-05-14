@@ -17,6 +17,7 @@
 		<assertj.version>3.13.2</assertj.version>
 		<hibernate.version>5.4.6.Final</hibernate.version>
 		<spring-boot.version>2.2.0.RELEASE</spring-boot.version>
+		<spring-framework.version>5.3.0-TX-EVENT-SNAPSHOT</spring-framework.version>
 
 	</properties>
 
@@ -51,6 +52,13 @@
 
 	<dependencyManagement>
 		<dependencies>
+			<dependency>
+				<groupId>org.springframework</groupId>
+				<artifactId>spring-framework-bom</artifactId>
+				<version>${spring-framework.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-dependencies</artifactId>

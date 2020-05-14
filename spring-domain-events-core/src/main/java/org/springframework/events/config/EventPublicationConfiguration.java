@@ -15,12 +15,10 @@
  */
 package org.springframework.events.config;
 
-import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.events.EventPublicationRegistry;
-import org.springframework.events.support.CompletionRegisteringBeanPostProcessor;
 import org.springframework.events.support.MapEventPublicationRegistry;
 import org.springframework.events.support.PersistentApplicationEventMulticaster;
 
@@ -35,10 +33,5 @@ class EventPublicationConfiguration {
 
 		return new PersistentApplicationEventMulticaster(
 				() -> registry.getIfAvailable(() -> new MapEventPublicationRegistry()));
-	}
-
-	@Bean
-	static CompletionRegisteringBeanPostProcessor bpp(ObjectFactory<EventPublicationRegistry> store) {
-		return new CompletionRegisteringBeanPostProcessor(() -> store.getObject());
 	}
 }

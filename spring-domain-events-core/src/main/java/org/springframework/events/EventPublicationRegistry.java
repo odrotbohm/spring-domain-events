@@ -15,7 +15,7 @@
  */
 package org.springframework.events;
 
-import java.util.Collection;
+import java.util.stream.Stream;
 
 import org.springframework.context.ApplicationListener;
 import org.springframework.util.Assert;
@@ -34,7 +34,7 @@ public interface EventPublicationRegistry {
 	 * @param event must not be {@literal null}.
 	 * @param listeners must not be {@literal null}.
 	 */
-	void store(Object event, Collection<ApplicationListener<?>> listeners);
+	void store(Object event, Stream<PublicationTargetIdentifier> listeners);
 
 	/**
 	 * Marks the publication for the given event and {@link PublicationTargetIdentifier} as completed.
